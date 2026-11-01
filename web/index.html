@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Slow Leaf</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <div class="brand">
+      <h1>Slow Leaf</h1>
+      <p id="status" class="status"><i class="dot"></i><span id="statusText">Starting…</span></p>
+    </div>
+    <div class="tools">
+      <button id="btnSettings" class="icon" title="Settings" aria-label="Settings">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h9M15 6h2M3 14h2M8 14h9"/><circle cx="13.5" cy="6" r="1.8"/><circle cx="6.5" cy="14" r="1.8"/></svg>
+      </button>
+      <button id="btnPet" class="icon" title="Put the plant on your desktop" aria-label="Minimize to desktop plant">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="11" rx="1.5"/><path d="M10 9.5v6M7.5 13l2.5 2.5 2.5-2.5"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <section class="stage card" id="stage">
+    <svg id="scene" role="img" aria-label="Your plant"></svg>
+    <div id="banner" class="banner" hidden>
+      <div>
+        <strong>Break's over</strong>
+        <p>Your plant is awake. It will start to wilt if you stay idle.</p>
+      </div>
+      <div class="banner-actions">
+        <button id="btnBack" class="primary small">I'm back</button>
+        <button id="btnMore" class="ghost small">+5 min</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="meter" aria-live="polite">
+    <div class="meter-row"><span id="plantName">Monstera</span><span id="growthPct">0%</span></div>
+    <div class="bar"><i id="barFill"></i></div>
+    <p id="eta" class="sub"></p>
+  </section>
+
+  <section class="break card">
+    <div id="breakIdle" class="break-idle">
+      <div class="break-copy">
+        <h2>Take a break</h2>
+        <p class="sub">Your plant sleeps and keeps growing.</p>
+      </div>
+      <div class="break-controls">
+        <div class="stepper" role="group" aria-label="Break length">
+          <button id="minus" aria-label="Shorter">−</button>
+          <span><b id="mins">15</b> min</span>
+          <button id="plus" aria-label="Longer">+</button>
+        </div>
+        <button id="btnBreak" class="primary">Start</button>
+      </div>
+    </div>
+    <div id="breakRun" class="break-run" hidden>
+      <div class="break-copy">
+        <h2>Resting</h2>
+        <p class="sub">Sleeping and growing. Go stretch.</p>
+      </div>
+      <div class="run-right"><div class="clock" id="clock">15:00</div><button id="btnEnd" class="ghost small">End break</button></div>
+      <div class="thin"><i id="breakFill"></i></div>
+    </div>
+  </section>
+</div>
+
+<aside id="settings" class="sheet" hidden aria-label="Settings">
+  <div class="sheet-head">
+    <h2>Settings</h2>
+    <button id="btnClose" class="icon" aria-label="Close settings">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"/></svg>
+    </button>
+  </div>
+  <div class="group">
+    <h3>Plant</h3>
+    <div class="seg" id="speciesSeg">
+      <button data-v="monstera">Monstera</button>
+      <button data-v="staghorn">Staghorn fern</button>
+    </div>
+    <p class="sub">Each plant keeps its own progress.</p>
+  </div>
+  <div class="group">
+    <h3>Grows when</h3>
+    <p class="sub">Any checked activity keeps the plant growing. Without it, the plant wilts.</p>
+    <div id="factorList" class="factors"></div>
+  </div>
+  <div class="group">
+    <h3>Wilting starts after</h3>
+    <div class="seg" id="graceSeg">
+      <button data-v="1">1 min</button><button data-v="2">2 min</button><button data-v="5">5 min</button><button data-v="10">10 min</button>
+    </div>
+    <p class="sub">of no activity.</p>
+  </div>
+  <div class="group">
+    <h3>Reminder</h3>
+    <label class="check"><input type="checkbox" id="sound"><span class="box"></span><span>Soft chime when a break ends</span></label>
+  </div>
+  <div class="group">
+    <h3>Pot</h3>
+    <p class="sub" id="potInfo"></p>
+    <button id="btnNewPot" class="ghost">Start a new pot</button>
+  </div>
+  <p class="foot">Growing takes about 4 hours of activity. Wilting is 1.5× slower than growing, and a plant never dies.</p>
+</aside>
+
+<div id="pet" class="pet">
+  <button id="btnRestore" class="icon pet-btn" title="Open Slow Leaf" aria-label="Open Slow Leaf">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M11 4h5v5M16 4l-6 6M9 16H4v-5"/></svg>
+  </button>
+  <div id="bubble" class="bubble" hidden><span>Break's over</span><button id="bubbleOk">OK</button></div>
+  <div id="petChip" class="chip" hidden></div>
+</div>
+
+<script src="plants.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
