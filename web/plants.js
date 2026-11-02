@@ -362,6 +362,9 @@
     const t = clamp((r - 24) / (WW_MR - 24));
     return WW_YF * t * t * (3 - 2 * t) - (M ? 2.5 * Math.sin(r * 0.09 + M.ph) * (1 - t) * t * 4 : 0);
   };
+  // a strap lying on the floor and heading towards us bends aside before it reaches the front of the picture
+  // (it used to be cut off there, its torn tip left hanging over the sand)
+  const wwSoftZ = z => z <= 100 ? z : 100 + 30 * (1 - Math.exp(-(z - 100) / 30));
   const mixP = (a, b, t) => a.map((c, i) => mix(c, b[i], t));
 
   // ------------------------------------------------------------ Jade vine (Strongylodon macrobotrys) on a hoop trellis
@@ -2053,13 +2056,34 @@
       plan.leaves.forEach(lf => { if (lf.third && C.tri < 0.02) return; lf.st.forEach(st => this.wwStrap(Q, lf, st, C)); });
             Q.push({ dep: prj([0, C.yt, 0])[2], draw: p => this.wwCrown(p, C, plan) });
       if (G > 0.7) plan.cones.forEach(c => Q.push(this.wwCone(c, C, ease((G - 0.7) / 0.22))));
-      const wg = E('g', null, og), cid = this.uid + 'mndo';
+      const wg = E('g', null, og), cid = this.uid + 'mndo', MS = this.moundSil(plan.mound);
       const cp = E('clipPath', { id: cid, clipPathUnits: 'userSpaceOnUse' }, this.pdefs);
-      E('path', { d: 'M-80,-80 H500 V520 H-80 Z ' + this.moundSil(plan.mound).d, 'clip-rule': 'evenodd' }, cp);
+      E('path', { d: 'M-80,-80 H500 V520 H-80 Z ' + MS.d, 'clip-rule': 'evenodd' }, cp);
+      // the crest line of the mound, wherever it passes in front of a piece that goes down behind it
+      // (without it a strap seemed to sink straight into the sand)
+      const top = MS.top, silY = x => {
+        if (x <= top[0][0]) return top[0][1];
+        for (let i = 1; i < top.length; i++) if (top[i][0] >= x) { const a = top[i - 1], b = top[i]; return lerp(a[1], b[1], (x - a[0]) / ((b[0] - a[0]) || 1)); }
+        return top[top.length - 1][1];
+      };
+      const inPoly = (P, x, y) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const a = P[i], b = P[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; };
+      const crest = (P, p) => {
+        let x0 = Infinity, x1 = -Infinity, d = '', run = [];
+        P.forEach(q => { x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); });
+        const flush = () => { if (run.length > 1) d += 'M' + run.map(pt).join('L'); run = []; };
+        for (let x = Math.floor(x0); x <= x1 + 1; x += 1) { const y = silY(x); if (inPoly(P, x, y)) run.push([x, y]); else flush(); }
+        flush();
+        if (d) E('path', { d, stroke: INK, 'stroke-width': 2.2, fill: 'none', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, p);
+        return !!d;
+      };
       let back = null, tgt = '';
       Q.sort((a, b) => a.dep - b.dep).forEach(q => {
         // pieces lying on the far side of the mound are hidden by it; everything else is drawn in depth order
-        if (q.behind) { if (tgt !== 'b') { back = E('g', { 'clip-path': `url(#${cid})` }, wg); tgt = 'b'; } q.draw(back); }
+        if (q.behind) {
+          if (tgt !== 'b') { back = E('g', { 'clip-path': `url(#${cid})` }, wg); tgt = 'b'; }
+          q.draw(back);
+          if (q.poly && crest(q.poly, wg)) tgt = 'm';
+        }
         else { tgt = 'm'; q.draw(wg); }
       });
       this.parts.push({ g: wg, cx: CX, cy: SOIL + WW_OY, amp: 0.1, ph: 0, blade: null });
@@ -2072,49 +2096,63 @@
       if (!st.main && spl < 0.03) return;
       const Mn = lf.st.find(q => q.main), mp = k => lerp(Mn[k], st[k], spl);
       const sz = TR.size * lerp(0.3, 1, gs) * (third ? 0.95 : 1) * 1.2, sag = 1 - W * 0.45 - sl * 0.05, M = C.M;
-      const H = mp('H') * sz * 1.3 * sag, ra = mp('ra') * sz * 0.9, fl = mp('flare'), tail = mp('tail'), dl = mp('d');
+      const H0 = mp('H') * sz * 1.3 * sag, ra0 = mp('ra') * sz * 0.9, fl = mp('flare'), tail = mp('tail'), dl = mp('d');
       const psiL = third ? -90 : lf.sx > 0 ? 0 : 180, sgn = third ? 1 : lf.sx > 0 ? 1 : -1;
       const YF = WW_YF, MR = WW_MR;
       const wv = lerp(10, 37, gs) * TR.size * lerp(st.main ? 1.15 : 1, st.wk, spl) * (third ? 0.9 : 1), lift = wv * 0.42;
       const r0 = third ? zw * 0.7 : cw * 0.76, y0 = yt + 3, gy = (x, z) => wwGround(x, z, M) - lift;
-      // up out of the crown, over in an arch, down onto the sand, along the slope of the mound and out across the floor
-      const wp = [[r0, y0, 0], [r0 + ra * 0.38, y0 - H * 0.72, 0.45], [r0 + ra * 0.78, y0 - H, 0.85], [r0 + ra * 1.28, y0 - H * 0.5, 1]];
-      const yo = (1 - gs) * 30, rl = Math.max(r0 + ra * 1.28 + 12, r0 + ra * 1.55 * mp('land') + 8 + yo * 0.5);
-      wp.push([rl, null, 1.02]);
-      if (rl < MR - 34) wp.push([lerp(rl, MR, 0.55), null, 1.05]);
-      const rf = Math.max(rl + 18, MR + 6 + fl * 34 + yo);
-      wp.push([rf, null, 1.1], [rf + tail, null, 1.2]);
-      let P3 = wp.map(([rr, y, k]) => { const a = rad(psiL + sgn * (lf.phi * (1 - k * 0.5) + dl * Math.min(1, k) + st.drift * spl * Math.max(0, k - 1) * 5)), x = rr * Math.cos(a), z = rr * Math.sin(a); return [x, y === null ? gy(x, z) : y, z]; });
-      if (!third && st.c < -0.55 && !st.main) {
-        // a back strap that crosses over behind the crown to the far side: a tall arch seen face-on
-        const a0 = rad(psiL + sgn * lf.phi), aE = rad(psiL + sgn * dl * spl), Bb = [r0 * Math.cos(a0), y0, r0 * Math.sin(a0)];
-        const pol = rr => { const x = rr * Math.cos(aE), z = rr * Math.sin(aE); return [x, gy(x, z), z]; };
-        const Mr = pol(84), at = (u, y) => [lerp(Bb[0], Mr[0], u), y, lerp(Bb[2], Mr[2], u)];
-        P3 = [Bb, at(0.14, y0 - H * 0.66), at(0.42, y0 - H), at(0.74, y0 - H * 0.72), at(0.94, lerp(y0 - H * 0.2, Mr[1], 0.5)), Mr, pol(MR - 10), pol(MR + 30)];
-      }
-      // Catmull-Rom through the waypoints, then even steps along it
-      const dense = [];
-      for (let i = 0; i < P3.length - 1; i++) {
-        const p0 = P3[Math.max(0, i - 1)], p1 = P3[i], p2 = P3[i + 1], p3 = P3[Math.min(P3.length - 1, i + 2)];
-        for (let k = 0; k < 16; k++) {
-          const t = k / 16, t2 = t * t, t3 = t2 * t;
-          dense.push([0, 1, 2].map(j => 0.5 * (2 * p1[j] + (-p0[j] + p2[j]) * t + (2 * p0[j] - 5 * p1[j] + 4 * p2[j] - p3[j]) * t2 + (-p0[j] + 3 * p1[j] - 3 * p2[j] + p3[j]) * t3)));
-        }
-      }
-      dense.push(P3[P3.length - 1]);
-      // the spline may not dip into the sand (that showed as a kink where a strap lands)
-      dense.forEach(q => { q[1] = Math.min(q[1], gy(q[0], q[2])); });
-      const cum = [0];
-      for (let i = 1; i < dense.length; i++) cum.push(cum[i - 1] + Math.hypot(...s3(dense[i], dense[i - 1])));
-      let L = Math.min(cum[cum.length - 1] * lerp(1, st.Lk, spl), lerp(20, 580, ease(G / 0.95)) * TR.size * lf.L * grow * lerp(1, st.Lk, spl));
+      // a strap that would stop short of the sand hangs in mid-air and its tip seems to stab into the mound,
+      // so a full-grown one that is too short for its arch gets a lower, tighter arch (tried up to three times)
+      let dense, cum, L, kH = 1;
       const along = s => {
         let i = 1;
         while (i < cum.length - 1 && cum[i] < s) i++;
         const t = (s - cum[i - 1]) / ((cum[i] - cum[i - 1]) || 1);
         return l3(dense[i - 1], dense[i], clamp(t));
       };
-      // the strap is cut short where it would leave the picture
-      for (let s = 0; s < L; s += 4) { const q = along(s); if (Math.abs(q[0]) > 202 || q[2] > 135 || q[2] < -235) { L = s; break; } }
+      for (let it = 0; it < 3; it++) {
+        const H = H0 * kH, ra = ra0 * kH;
+        // up out of the crown, over in an arch, down onto the sand, along the slope of the mound and out across the floor
+        const wp = [[r0, y0, 0], [r0 + ra * 0.38, y0 - H * 0.72, 0.45], [r0 + ra * 0.78, y0 - H, 0.85], [r0 + ra * 1.28, y0 - H * 0.5, 1]];
+        const yo = (1 - gs) * 30, rl = Math.max(r0 + ra * 1.28 + 12, r0 + ra * 1.55 * mp('land') + 8 + yo * 0.5);
+        wp.push([rl, null, 1.02]);
+        if (rl < MR - 34) wp.push([lerp(rl, MR, 0.55), null, 1.05]);
+        const rf = Math.max(rl + 18, MR + 6 + fl * 34 + yo);
+        wp.push([rf, null, 1.1], [rf + tail, null, 1.2]);
+        let P3 = wp.map(([rr, y, k]) => { const a = rad(psiL + sgn * (lf.phi * (1 - k * 0.5) + dl * Math.min(1, k) + st.drift * spl * Math.max(0, k - 1) * 5)), x = rr * Math.cos(a), z0 = rr * Math.sin(a), z = y === null ? wwSoftZ(z0) : z0; return [x, y === null ? gy(x, z) : y, z]; });
+        if (!third && st.c < -0.55 && !st.main) {
+          // a back strap that crosses over behind the crown to the far side: a tall arch seen face-on
+          const a0 = rad(psiL + sgn * lf.phi), aE = rad(psiL + sgn * dl * spl), Bb = [r0 * Math.cos(a0), y0, r0 * Math.sin(a0)];
+          const pol = rr => { const x = rr * Math.cos(aE), z = rr * Math.sin(aE); return [x, gy(x, z), z]; };
+          const Mr = pol(84), at = (u, y) => [lerp(Bb[0], Mr[0], u), y, lerp(Bb[2], Mr[2], u)];
+          P3 = [Bb, at(0.14, y0 - H * 0.66), at(0.42, y0 - H), at(0.74, y0 - H * 0.72), at(0.94, lerp(y0 - H * 0.2, Mr[1], 0.5)), Mr, pol(MR - 10), pol(MR + 30)];
+        }
+        // Catmull-Rom through the waypoints, then even steps along it
+        dense = [];
+        for (let i = 0; i < P3.length - 1; i++) {
+          const p0 = P3[Math.max(0, i - 1)], p1 = P3[i], p2 = P3[i + 1], p3 = P3[Math.min(P3.length - 1, i + 2)];
+          for (let k = 0; k < 16; k++) {
+            const t = k / 16, t2 = t * t, t3 = t2 * t;
+            dense.push([0, 1, 2].map(j => 0.5 * (2 * p1[j] + (-p0[j] + p2[j]) * t + (2 * p0[j] - 5 * p1[j] + 4 * p2[j] - p3[j]) * t2 + (-p0[j] + 3 * p1[j] - 3 * p2[j] + p3[j]) * t3)));
+          }
+        }
+        dense.push(P3[P3.length - 1]);
+        // the spline may not dip into the sand (that showed as a kink where a strap lands)
+        dense.forEach(q => { q[1] = Math.min(q[1], gy(q[0], q[2])); });
+        cum = [0];
+        for (let i = 1; i < dense.length; i++) cum.push(cum[i - 1] + Math.hypot(...s3(dense[i], dense[i - 1])));
+        L = Math.min(cum[cum.length - 1] * lerp(1, st.Lk, spl), lerp(20, 580, ease(G / 0.95)) * TR.size * lf.L * grow * lerp(1, st.Lk, spl));
+        // the strap is cut short where it would leave the picture
+        for (let s = 0; s < L; s += 4) { const q = along(s); if (Math.abs(q[0]) > 202 || q[2] > 135 || q[2] < -235) { L = s; break; } }
+        if (G < 0.5 || it === 2) break;
+        let top = 0, land = -1;
+        dense.forEach((q, i) => { if (q[1] < dense[top][1]) top = i; });
+        for (let i = top + 1; i < dense.length; i++) if (dense[i][1] >= gy(dense[i][0], dense[i][2]) - 0.5) { land = i; break; }
+        if (land < 0 || L >= cum[land] + 26) break;
+        const k = lerp(1, clamp((L - 26) / cum[land], 0.5, 1), ease((G - 0.5) / 0.3));
+        if (k > 0.985) break;
+        kH *= k;
+      }
       if (L < 6) return;
       const NS = 40, S = [];
       for (let k = 0; k <= NS; k++) { const s = L * k / NS, p = along(s); S.push({ p, s, fl: p[1] > YF - lift - 2 && Math.hypot(p[0], p[2] / WW_MZ) > MR, on: s > L * 0.3 && p[1] > gy(p[0], p[2]) - 3 }); }
@@ -2123,7 +2161,7 @@
       const twL = s => lf.tw0 + lf.twA * Math.sin(6.2832 * s * lf.twF + lf.ph);
       const twS = s => st.tw0 + st.twA * Math.sin(6.2832 * s * st.twF + st.ph) + (st.flip ? Math.PI * ease((s - L * st.fs) / 40) : 0);
       this.wwDrawStrip(Q, S, {
-        L, s0: 0, Lfray, fray: st.frays || st.main ? Math.max(2, Math.round(st.fray * spl)) : 2, seed: st.seed, side: st.side,
+        L, s0: 0, M: C.M, Lfray, fray: st.frays || st.main ? Math.max(2, Math.round(st.fray * spl)) : 2, seed: st.seed, side: st.side,
         w: s => wv * (0.5 + 0.5 * ease(s / 40)) * (1 - 0.12 * s / L),
         tw: s => ease(s / 40) * lerp(twL(s), twS(s), spl),
         col: (s, back, f2) => this.wwColor(s, L, sD, back, f2, W, third ? tri : 0)
@@ -2167,6 +2205,23 @@
         if (d3(nf, q.n) < 0) nf = k3(nf, -1);
         q.b = n3(l3(q.b, bf, wf)); q.n = n3(l3(q.n, nf, wf));
       });
+      if (o.M !== undefined) {
+        // where it lies, it rests on the sand with its lowest edge (no hovering a hand's breadth above it, and no edge cutting in);
+        // where it arches, it is only lifted if an edge would dip into the sand
+        const need = S.map(q => {
+          const w = o.w(q.s);
+          let m = -Infinity;
+          for (const u of [-0.5, -0.25, 0, 0.25, 0.5]) { const e = a3(q.p, k3(q.b, u * w)); m = Math.max(m, e[1] - wwGround(e[0], e[2], o.M) + 1.2); }
+          return m;
+        });
+        const want = S.map((q, k) => q.fl || q.on ? -need[k] : Math.min(0, -need[k]));
+        S.forEach((q, k) => {
+          let t = 0, c = 0;
+          for (let j = -2; j <= 2; j++) { const kk = k + j; if (kk >= 0 && kk <= N) { t += want[kk]; c++; } }
+          const dy = Math.min(t / c, -need[k]);
+          if (dy) q.p = [q.p[0], q.p[1] + dy, q.p[2]];
+        });
+      }
       const ds = S[1].s - S[0].s;
       const fAt = s => {
         const x = clamp(s / ds, 0, N - 0.0001), i = Math.floor(x), t = x - i, A = S[i], Bq = S[i + 1];
@@ -2180,7 +2235,7 @@
         smp.push({ s, F, w, front, at, c: shade(o.col(s, !front, F.fl), (lam > 0.5 ? (lam - 0.5) * 0.4 : -(0.5 - lam) * 0.55) - 0.16 * clamp(-F.p[2] / 50)), C: prj(F.p) });
       }
       const runs = [];
-      let cur = [smp[0]];
+      let cur = [smp[0]], lastB = false;
       for (let k = 1; k <= n; k++) {
         cur.push(smp[k]);
         if (k < n && (cur.length > 4 || smp[k + 1].front !== smp[k].front)) { runs.push(cur); cur = [smp[k]]; cur.pre = smp[k - 1]; }
@@ -2191,7 +2246,9 @@
         const last = ri === runs.length - 1, Ls = run.map(q => q.at(-0.5)), Rs = run.map(q => q.at(0.5));
         const dep = run.reduce((t, q) => t + q.C[2], 0) / run.length, cen = run[Math.floor(run.length / 2)].F.p;
         const behind = cen[2] < -4 && Math.max(...Ls.map(q => q[1]), ...Rs.map(q => q[1])) > SOIL + OY - 30;
-        Q.push({ dep, behind, draw: p => {
+        if (last) lastB = behind;
+        const pl = run.pre ? [run.pre].concat(run) : run;
+        Q.push({ dep, behind, poly: behind ? pl.map(q => q.at(-0.5)).concat(pl.map(q => q.at(0.5)).reverse()) : null, draw: p => {
           const id = this.uid + 'wg' + (this.gid = (this.gid || 0) + 1), rr = run.pre ? [run.pre].concat(run) : run, A = rr[0].C, Z = rr[rr.length - 1].C;
           const gA = { gradientUnits: 'userSpaceOnUse', x1: f(A[0]), y1: f(A[1]), x2: f(Z[0]), y2: f(Z[1]) };
           const gr = E('linearGradient', Object.assign({ id }, gA), this.pdefs), gd = E('linearGradient', Object.assign({ id: id + 'd' }, gA), this.pdefs);
@@ -2223,7 +2280,9 @@
             dep += Lp[k][2];
           }
           const mid = l3(F0.p, fAt(L).p, 0.5);
-          Q.push({ dep: dep / 7 - 0.01 * i, behind: mid[2] < -4 && Lp[0][1] > SOIL + OY - 30, draw: p => {
+          // a tongue goes wherever its strap goes: if the strap ends behind the mound, so does its torn tip
+          const tb = lastB || (mid[2] < -4 && Lp[0][1] > SOIL + OY - 30);
+          Q.push({ dep: dep / 7 - 0.01 * i, behind: tb, poly: tb ? Lp.concat(Rp.slice().reverse()) : null, draw: p => {
             const c = shade(o.col(L, !front, F0.fl), (i % 2) * 0.06);
             E('path', { d: smoothOpen(Lp) + 'L' + smoothOpen(Rp.slice().reverse()).slice(1) + 'Z', fill: c, stroke: mix(ink, '#6A5232', 0.35), 'stroke-width': 0.7, 'stroke-linejoin': 'round' }, p);
             E('path', { d: smoothOpen(Lp.map((q, k) => [lerp(q[0], Rp[k][0], 0.4), lerp(q[1], Rp[k][1], 0.4)]).slice(0, 5)), stroke: shade(c, -0.3), 'stroke-width': 0.4, fill: 'none', opacity: 0.6 }, p);
@@ -2237,7 +2296,7 @@
       let a = rad(l.dir), p = [l.x, YF - w * 0.42, l.z];
       for (let i = 0; i <= n; i++) { S.push({ p, s: len * i / n, fl: true }); a += R(r, -0.25, 0.25); p = [p[0] + Math.cos(a) * l.sx * len / n, p[1], p[2] + Math.sin(a) * len / n]; }
       this.wwDrawStrip(Q, S, {
-        L: len, s0: 0, Lfray: len * 0.35, fray: 3, seed: l.seed, side: 1, first: true,
+        L: len, s0: 0, M: C.M, Lfray: len * 0.35, fray: 3, seed: l.seed, side: 1, first: true,
         w: s => w * (0.8 + 0.2 * Math.sin(s / len * 3.1)), tw: s => 0.5 + 0.9 * Math.sin(s / len * 4 + l.seed % 7),
         col: (s, back) => mix(back ? '#E4D3AA' : '#BF9D68', '#8A7350', 0.1)
       });
@@ -2540,3 +2599,4 @@
   Scene.JADES = Object.keys(JADES);
   window.SlowLeafScene = Scene;
 })();
+
