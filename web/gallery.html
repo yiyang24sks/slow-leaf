@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Slow Leaf · Gallery</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  body { overflow: auto; -webkit-user-select: text; user-select: text; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 22px 20px 60px; }
+  .intro { color: var(--sub); margin: 4px 0 18px; }
+  .hero { position: sticky; top: 0; z-index: 3; background: var(--bg); padding: 10px 0 12px; border-bottom: 1px solid var(--line); display: flex; gap: 16px; align-items: stretch; }
+  .hero .card { width: 340px; height: 300px; flex: none; overflow: hidden; }
+  .hero.rare .card { border-color: #C9A85A; box-shadow: inset 0 0 0 3px #EFDDAE; }
+  #big { width: 100%; height: 100%; display: block; }
+  .hero-info { padding-top: 6px; }
+  .hero-info h2 { font-size: 20px; }
+  .hero-info p { color: var(--sub); margin: 4px 0 0; font-size: 13px; }
+  section.g { margin-top: 26px; }
+  section.g > h3 { margin-bottom: 4px; }
+  section.g > p { color: var(--sub); font-size: 13px; margin: 0 0 10px; }
+  .row { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .tile { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 0 0 7px; text-align: left; overflow: hidden; }
+  .tile:hover { border-color: var(--line-strong); }
+  .tile.on { outline: 2px solid var(--sage); outline-offset: -2px; }
+  .tile.rare { border-color: #C9A85A; }
+  .tile svg { width: 100%; aspect-ratio: 1 / 1.05; display: block; background: #F5F0E5; border-bottom: 1px solid var(--line); }
+  .tile.rare svg { background: linear-gradient(180deg, #F8F0DC, #F3EAD6); }
+  .tile b { display: block; font: 600 12.5px/1.25 Georgia, serif; padding: 6px 8px 0; }
+  .tile small { display: block; color: var(--sub); font-size: 11.5px; padding: 1px 8px 0; }
+  .reroll { margin-left: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Slow Leaf · Gallery</h1>
+  <p class="intro">Every look the app can produce, in one place. Click any tile to see it large and animated (rare plants get their gold motes there).</p>
+  <div class="hero" id="hero">
+    <div class="card"><svg id="big" role="img" aria-label="Selected plant"></svg></div>
+    <div class="hero-info"><h2 id="hName">Pick a tile</h2><p id="hDesc"></p></div>
+  </div>
+  <div id="sections"></div>
+</div>
+<script src="plants.js"></script>
+<script>
+(function () {
+  const VN = SlowLeafScene.VARIANT_NAMES, SP = { monstera: 'Monstera', staghorn: 'Staghorn fern', caladium: 'Caladium', bluestar: 'Blue Star fern', jadevine: 'Jade vine', welwitschia: 'Welwitschia' };
+  const big = new SlowLeafScene(document.getElementById('big'), {});
+  const host = document.getElementById('sections');
+  let current = null;
+  const cap = s => s[0].toUpperCase() + s.slice(1);
+  function tile(row, st, title, sub) {
+    const b = document.createElement('button');
+    b.className = 'tile' + (st.rare ? ' rare' : '');
+    b.innerHTML = `<svg aria-hidden="true"></svg><b>${title}</b><small>${sub || ''}</small>`;
+    row.appendChild(b);
+    const svg = b.querySelector('svg');
+    const sc = new SlowLeafScene(svg, { static: true, bg: false });
+    svg.setAttribute('viewBox', st.species === 'staghorn' ? '40 -8 340 357' : st.species === 'welwitschia' ? '12 22 400 421' : '15 -24 390 410');
+    const full = Object.assign({ growth: 1, stress: 0, mode: 'growing', vk: 0 }, st);
+    sc.setState(full); sc.renderNow();
+    b.addEventListener('click', () => {
+      if (current) current.classList.remove('on');
+      current = b; b.classList.add('on');
+      big.setState(full);
+      document.getElementById('hero').classList.toggle('rare', !!st.rare);
+      document.getElementById('hName').textContent = title;
+      document.getElementById('hDesc').textContent = sub || '';
+    });
+    return b;
+  }
+  function section(title, note, fill, reroll) {
+    const s = document.createElement('section');
+    s.className = 'g';
+    s.innerHTML = `<h3>${title}${reroll ? '<button class="link reroll">new seeds</button>' : ''}</h3><p>${note}</p><div class="row"></div>`;
+    host.appendChild(s);
+    const row = s.querySelector('.row');
+    const draw = () => { row.textContent = ''; fill(row); };
+    draw();
+    if (reroll) s.querySelector('.reroll').addEventListener('click', draw);
+    return row;
+  }
+  const rnd = () => 1 + Math.floor(Math.random() * 2e9);
+  const seeds = [11, 222, 3333, 44444, 90210];
+
+  section('Rare · Monstera', "'Aurea': lime to deep-gold sectors, half-moons, marbling and flecks, a different mix on every leaf. 'Albo': cream to white with pale mint transition zones.", row => {
+    for (const v of ['aurea', 'albo']) seeds.slice(0, 3).forEach((sd, i) => tile(row, { species: 'monstera', seed: i ? rnd() : sd, variant: v, vk: 1, rare: true }, `Monstera ${VN[v]}`, 'Rare'));
+  }, true);
+  section('Rare · Staghorn fern', "'Yellow Moon' (after P. willinckii 'Yellow Moon'): warm golden-green fronds, moonlit shields, small velvety cinnamon spore pads under the hanging tips. 'Silver Felt' (after P. veitchii): fine white star-shaped hairs, thickest on the young tips.", row => {
+    for (const v of ['spore', 'silver']) seeds.slice(0, 3).forEach((sd, i) => tile(row, { species: 'staghorn', seed: i ? rnd() : sd, variant: v, vk: 1, rare: true }, `Staghorn fern ${VN[v]}`, 'Rare'));
+  }, true);
+  section('Rare · Caladium', "'Miss Muffet': chartreuse-lime leaves with fine burgundy freckles and a pale cream midrib. 'Strawberry Star': white face, green margin and green netted veins, red spots between the main veins.", row => {
+    for (const v of ['muffet', 'strawberry']) seeds.slice(0, 3).forEach((sd, i) => tile(row, { species: 'caladium', seed: i ? rnd() : sd, variant: v, vk: 1, rare: true }, `Caladium ${VN[v]}`, 'Rare'));
+  }, true);
+  section('Rare · Blue Star fern', "'Mandaianum': ruffled, wavy lobes with a silvery-blue sheen. 'Golden Sori': rows of round golden spore dots along every lobe (P. aureum means 'golden').", row => {
+    for (const v of ['mandaianum', 'goldsori']) seeds.slice(0, 3).forEach((sd, i) => tile(row, { species: 'bluestar', seed: i ? rnd() : sd, variant: v, vk: 1, rare: true }, `Blue Star fern ${VN[v]}`, 'Rare'));
+  }, true);
+  section('Rare · Jade vine', "'Flame' (after the red jade vine, Mucuna bennettii): flame-scarlet claws. 'Lilac Dawn' (after Strongylodon juangonzalezii, whose flowers open lilac and turn blue): every truss runs from blue at the top to lilac at the tip.", row => {
+    for (const v of ['flame', 'lilac']) seeds.slice(0, 3).forEach((sd, i) => tile(row, { species: 'jadevine', seed: i ? rnd() : sd, variant: v, vk: 1, rare: true }, `Jade vine ${VN[v]}`, 'Rare'));
+  }, true);
+  section('Rare · Welwitschia', "'Blue Cone': a female plant, with plump blue-green seed cones instead of small salmon-pink pollen cones. 'Three-Leaf': the rare form that grows a third strap leaf (almost every Welwitschia keeps just two leaves for life).", row => {
+    for (const v of ['bluecone', 'trileaf']) seeds.slice(0, 3).forEach((sd, i) => tile(row, { species: 'welwitschia', seed: i ? rnd() : sd, variant: v, vk: 1, rare: true }, `Welwitschia ${VN[v]}`, 'Rare'));
+  }, true);
+  section('Golden chance · step by step', 'How a plant changes during the 30 extra minutes (0 → 100 %).', row => {
+    for (const [sp, v, sd] of [['monstera', 'aurea', 3333], ['monstera', 'albo', 222], ['staghorn', 'spore', 11], ['staghorn', 'silver', 222], ['caladium', 'muffet', 11], ['caladium', 'strawberry', 222], ['bluestar', 'mandaianum', 11], ['bluestar', 'goldsori', 222], ['jadevine', 'flame', 11], ['jadevine', 'lilac', 222], ['welwitschia', 'bluecone', 11], ['welwitschia', 'trileaf', 222]])
+      [0, 0.33, 0.66, 1].forEach(k => tile(row, { species: sp, seed: sd, variant: v, vk: k, rare: k === 1 }, `${SP[sp]} ${VN[v]}`, `${Math.round(k * 30)} / 30 min`));
+  });
+  section('Monstera · leaf colours', 'Each pot rolls a colour tendency.', row => {
+    SlowLeafScene.HUES.forEach(h => tile(row, { species: 'monstera', seed: 11, over: { hue: h, pot: 'charcoal' } }, 'Monstera', cap(h)));
+  });
+  section('Monstera · pots', '', row => {
+    SlowLeafScene.POTS.forEach(p => tile(row, { species: 'monstera', seed: 222, over: { pot: p } }, 'Monstera', cap(p) + ' pot'));
+  });
+  section('Staghorn · frond colours and boards', '', row => {
+    SlowLeafScene.HUES.forEach(h => tile(row, { species: 'staghorn', seed: 11, over: { hue: h, wood: 'light' } }, 'Staghorn fern', cap(h)));
+    SlowLeafScene.WOODS.forEach(w => tile(row, { species: 'staghorn', seed: 3333, over: { wood: w } }, 'Staghorn fern', (w === 'walnut' ? 'Walnut' : 'Light oak') + ' board'));
+  });
+  section('Caladium · pink tones and leaf greens', 'Each pot rolls a pink and a green tendency.', row => {
+    SlowLeafScene.PINKS.forEach(pk => tile(row, { species: 'caladium', seed: 11, over: { pink: pk, pot: 'charcoal' } }, 'Caladium', cap(pk) + ' pink'));
+    SlowLeafScene.HUES.forEach(h => tile(row, { species: 'caladium', seed: 222, over: { hue: h, pink: 'rose' } }, 'Caladium', cap(h) + ' margin'));
+  });
+  section('Blue Star fern · frond colours', '', row => {
+    SlowLeafScene.HUES.forEach(h => tile(row, { species: 'bluestar', seed: 11, over: { hue: h, pot: 'cream' } }, 'Blue Star fern', cap(h)));
+  });
+  section('Jade vine · flower tones and leaf greens', 'Each pot rolls a flower tone and a leaf green.', row => {
+    SlowLeafScene.JADES.forEach(j => tile(row, { species: 'jadevine', seed: 11, over: { jade: j, pot: 'cream' } }, 'Jade vine', cap(j) + ' flowers'));
+    SlowLeafScene.HUES.forEach(h => tile(row, { species: 'jadevine', seed: 222, over: { hue: h } }, 'Jade vine', cap(h) + ' leaves'));
+  });
+  section('Welwitschia · leaf colours', '', row => {
+    SlowLeafScene.HUES.forEach(h => tile(row, { species: 'welwitschia', seed: 11, over: { hue: h, pot: 'terracotta' } }, 'Welwitschia', cap(h)));
+  });
+  section('Random common plants', 'Leaf count, size, splits, lean, droop and stem curve all vary.', row => {
+    for (let i = 0; i < 6; i++) tile(row, { species: 'monstera', seed: rnd() }, 'Monstera', 'Common');
+    for (let i = 0; i < 6; i++) tile(row, { species: 'staghorn', seed: rnd() }, 'Staghorn fern', 'Common');
+    for (let i = 0; i < 6; i++) tile(row, { species: 'caladium', seed: rnd() }, 'Caladium', 'Common');
+    for (let i = 0; i < 6; i++) tile(row, { species: 'bluestar', seed: rnd() }, 'Blue Star fern', 'Common');
+    for (let i = 0; i < 6; i++) tile(row, { species: 'jadevine', seed: rnd() }, 'Jade vine', 'Common');
+    for (let i = 0; i < 6; i++) tile(row, { species: 'welwitschia', seed: rnd() }, 'Welwitschia', 'Common');
+  }, true);
+  section('Growth and moods', '', row => {
+    for (const sp of Object.keys(SP)) {
+      [0.1, 0.35, 0.65].forEach(g => tile(row, { species: sp, seed: 222, growth: g }, SP[sp], `${Math.round(g * 100)} % grown`));
+      tile(row, { species: sp, seed: 222, stress: 0.9 }, SP[sp], 'Wilting');
+      tile(row, { species: sp, seed: 222, mode: 'sleeping' }, SP[sp], 'Sleeping (break)');
+    }
+  });
+  host.querySelector('.tile').click();
+})();
+</script>
+</body>
+</html>

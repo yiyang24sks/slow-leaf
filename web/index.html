@@ -14,6 +14,9 @@
       <p id="status" class="status"><i class="dot"></i><span id="statusText">Starting…</span></p>
     </div>
     <div class="tools">
+      <button id="btnGreenhouse" class="icon" title="Greenhouse" aria-label="Open greenhouse">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 17V9l7-5.5L17 9v8z"/><path d="M3 9h14M10 3.5V17M6.5 17v-4.5h7V17"/></svg>
+      </button>
       <button id="btnSettings" class="icon" title="Settings" aria-label="Settings">
         <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h9M15 6h2M3 14h2M8 14h9"/><circle cx="13.5" cy="6" r="1.8"/><circle cx="6.5" cy="14" r="1.8"/></svg>
       </button>
@@ -43,11 +46,24 @@
     <p id="eta" class="sub"></p>
   </section>
 
+  <section id="done" class="done card" hidden>
+    <div class="done-copy">
+      <h2 id="doneTitle">Fully grown</h2>
+      <p class="sub" id="doneText"></p>
+      <div class="thin gold" id="bonusBar" hidden><i id="bonusFill"></i></div>
+    </div>
+    <div class="done-actions">
+      <button id="btnHarvest" class="primary small">Add to Greenhouse</button>
+      <button id="btnBonus" class="ghost small gold-btn">Golden chance · 30 min</button>
+      <button id="btnDiscard" class="link">Discard this plant</button>
+    </div>
+  </section>
+
   <section class="break card">
     <div id="breakIdle" class="break-idle">
       <div class="break-copy">
         <h2>Take a break</h2>
-        <p class="sub">Your plant sleeps and keeps growing.</p>
+        <p class="sub">Your plant sleeps and keeps growing, a little slower.</p>
       </div>
       <div class="break-controls">
         <div class="stepper" role="group" aria-label="Break length">
@@ -81,6 +97,10 @@
     <div class="seg" id="speciesSeg">
       <button data-v="monstera">Monstera</button>
       <button data-v="staghorn">Staghorn fern</button>
+      <button data-v="caladium">Caladium</button>
+      <button data-v="bluestar">Blue Star fern</button>
+      <button data-v="jadevine">Jade vine</button>
+      <button data-v="welwitschia">Welwitschia</button>
     </div>
     <p class="sub">Each plant keeps its own progress.</p>
   </div>
@@ -105,8 +125,51 @@
     <p class="sub" id="potInfo"></p>
     <button id="btnNewPot" class="ghost">Start a new pot</button>
   </div>
-  <p class="foot">Growing takes about 4 hours of activity. Wilting is 1.5× slower than growing, and a plant never dies.</p>
+  <p class="foot">Growing takes about 4 hours of activity. Speeds: working 1.5×, breaks 1×, wilting 1×. A plant never dies.</p>
 </aside>
+
+<aside id="greenhouse" class="sheet" hidden aria-label="Greenhouse">
+  <div class="sheet-head">
+    <h2>Greenhouse</h2>
+    <div class="gh-head-tools">
+      <button id="ghSelect" class="ghost small">Select</button>
+    <button id="ghClose" class="icon" aria-label="Close greenhouse">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"/></svg>
+    </button>
+    </div>
+  </div>
+  <div id="ghList">
+    <div class="gh-selbar" id="ghSelBar" hidden>
+      <span id="ghSelCount">0 selected</span>
+      <button id="ghSelAll" class="link">Select all</button>
+      <button id="ghDelSel" class="danger small" disabled>Delete</button>
+    </div>
+    <div class="gh-stats" id="ghStats"></div>
+    <div class="gh-filter" id="ghFilter" role="group" aria-label="Filter plants"></div>
+    <p class="sub gh-empty" id="ghEmpty" hidden>Nothing here yet. Grow a plant to 100% and add it to your greenhouse.</p>
+    <div class="gh-grid" id="ghGrid"></div>
+  </div>
+  <div id="ghDetail" hidden>
+    <button id="ghBack" class="ghost small">‹ All plants</button>
+    <div class="gh-big card" id="ghBigWrap">
+      <svg id="ghBig" role="img" aria-label="Plant"></svg>
+      <button id="ghPrev" class="gh-arrow left" aria-label="Previous plant">‹</button>
+      <button id="ghNext" class="gh-arrow right" aria-label="Next plant">›</button>
+      <span class="gh-pos" id="ghPos"></span>
+    </div>
+    <h2 id="ghName"></h2>
+    <p class="gh-no" id="ghNo"></p>
+    <dl class="gh-facts" id="ghFacts"></dl>
+    <div class="gh-actions">
+      <button id="ghShow" class="primary small">Put on desktop</button>
+      <button id="ghUnshow" class="ghost small" hidden>Show current pot instead</button>
+      <button id="ghDelete" class="danger small">Delete</button>
+    </div>
+  </div>
+</aside>
+
+<canvas id="fx" class="fx" aria-hidden="true"></canvas>
+<div id="checkPop" class="check-pop" hidden aria-live="polite"><svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="18"/><path d="M12 20.5l5.5 5.5L28.5 14"/></svg><span id="checkText">Fully grown</span></div>
 
 <div id="pet" class="pet">
   <button id="btnRestore" class="icon pet-btn" title="Open Slow Leaf" aria-label="Open Slow Leaf">

@@ -79,10 +79,20 @@ def make_handler(engine, bridge):
         def _json(self, obj):
             self._send(200, json.dumps(obj).encode("utf-8"), "application/json")
 
+        def _local(self):
+            # only our own page may talk to the API: other websites open in a browser cannot reach it
+            # (a DNS-rebinding page has a foreign Host header; a cross-site POST cannot send JSON without a preflight)
+            host = (self.headers.get("Host") or "").split(":")[0]
+            return host in ("127.0.0.1", "localhost")
+
         def do_GET(self):
             path = self.path.split("?", 1)[0]
+            if path.startswith("/api/") and not self._local():
+                return self._send(403, b"forbidden", "text/plain")
             if path == "/api/state":
                 return self._json(engine.snapshot())
+            if path == "/api/collection":
+                return self._json(engine.get_collection())
             if path == "/":
                 path = "/index.html"
             full = os.path.normpath(os.path.join(WEB, path.lstrip("/")))
@@ -97,6 +107,9 @@ def make_handler(engine, bridge):
 
         def do_POST(self):
             path = self.path.split("?", 1)[0]
+            ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+            if not self._local() or ctype != "application/json":
+                return self._send(403, b"forbidden", "text/plain")
             try:
                 n = int(self.headers.get("Content-Length") or 0)
                 body = json.loads(self.rfile.read(n) or b"{}")
@@ -112,6 +125,17 @@ def make_handler(engine, bridge):
                 engine.dismiss()
             elif path == "/api/newpot":
                 engine.new_pot()
+            elif path == "/api/harvest":
+                engine.harvest()
+            elif path == "/api/discard":
+                engine.discard()
+            elif path == "/api/collection/delete":
+                engine.delete_items(body.get("ids") or [])
+            elif path == "/api/bonus/start":
+                engine.start_bonus()
+            elif path == "/api/display":
+                cid = body.get("id")
+                engine.set_display(cid if isinstance(cid, int) else None)
             elif path == "/api/window":
                 bridge.request(str(body.get("action", "")))
             else:
