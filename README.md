@@ -4,7 +4,8 @@ A quiet desktop plant for Windows. It grows while you are active, sleeps (and ke
 
 ## Start
 1. Install Python 3.10+ from python.org (tick "Add python.exe to PATH").
-2. Double-click `run.bat`. The first run installs dependencies (a few minutes).
+2. Double-click `Slow Leaf.vbs` (no console window). The first run opens `run.bat` to install dependencies (a few minutes).
+   Tip: right-click `Slow Leaf.vbs` > Send to > Desktop (create shortcut).
 
 Testing: `debug.bat` shows a console and grows the plant 60x faster.
 Preview the visuals only: open `web/index.html?preview=0.8` in a browser
